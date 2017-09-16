@@ -15,8 +15,8 @@ from random import randint
 import parsedatetime as pdt
 
 theme_color = [0.31, 0.89, 0.76, 1]
-white_color = [1,1,1,1]
-black_color = [0,0,0,1]
+white_color = [1, 1, 1, 1]
+black_color = [0, 0, 0, 1]
 yes_resp = ['OK. ', 'Got it. ', 'Sure. ', 'All right. ', '']
 
 cal = cal_manager.CalendarManager()
@@ -32,7 +32,7 @@ Builder.load_string('''
 
 
 class ScrollableLabel(ScrollView):
-    text = StringProperty("Ask me to schedule any event.\n")
+    text = StringProperty("Hello. Ask me to schedule an event.\n")
 
 
 class ChatApp(App):
@@ -40,6 +40,7 @@ class ChatApp(App):
     user_last_msg = ""
     event_data = None
     info_requested = False
+    request = None   # Field to check if info_requested
 
     def build(self):
 
@@ -56,7 +57,7 @@ class ChatApp(App):
         text_field = TextInput(background_color=white_color,
                                foreground_color=black_color,
                                cursor_color=black_color,
-                               hint_text='Type in a question',
+                               hint_text='Enter your event details',
                                size_hint_x=0.8,
                                multiline=False)
 
@@ -67,45 +68,82 @@ class ChatApp(App):
 
         def get_bot_response():
             if self.info_requested:
-                # TODO: Check if valid datetime
-                chat_view.text += yes_resp[randint(0, 3)] + "Creating your event.\n"
-                self.info_requested = False
-                # TODO: Parse using python datetime recognizer
-                # TODO: Add valid datetime to event_data
-                for key, value in self.event_data.items():
-                    chat_view.text += key + ': ' + value + '\n'
-            else:
-                event_data = cal.send_query(self.user_last_msg)
-                if event_data:
-                    self.event_data = event_data
-                    if 'start_date' not in event_data:
-                        if 'start_time' not in event_data:
-                            chat_view.text += yes_resp[randint(0,3)] + "Tell me the date and time of your event.\n"
-                        else:
-                            chat_view.text += yes_resp[randint(0, 3)] + "What day is your event?\n"
-                        self.info_requested = True
-                    elif 'start_time' not in event_data:
-                        chat_view.text += yes_resp[randint(0, 3)] + "What time is your event?\n"
-                        self.info_requested = True
-                    else:
-                        chat_view.text += yes_resp[randint(0, 3)] + "Creating your event.\n"
-                        for key, value in self.event_data.items():
-                            chat_view.text += key + ': ' + value + '\n'
-                        self.info_requested = False
+                validate_user_response()
+                if validate_event_data():
+                    update_chat("Creating your event.", confirm=True)
+                    for key, value in self.event_data.items():
+                        update_chat(key + ': ' + value)
                 else:
-                    chat_view.text += "I'm sorry. I don't understand.\n"
+                    add_request_to_chat()
 
-        def update_chat(msg):
+            else:
+                self.event_data = cal.send_query(self.user_last_msg)
+                if not validate_event_data():
+                    add_request_to_chat()
+
+        def add_request_to_chat():
+            if self.info_requested:
+                if self.request == 'title':
+                    update_chat("What would you like to name your event?", confirm=True)
+                elif self.request == 'start_date':
+                    if 'start_time' not in self.event_data:
+                        update_chat("Tell me the date and time of your event.", confirm=True)
+                    else:
+                        update_chat("What day is your event?", confirm=True)
+                elif self.request == 'start_time':
+                    update_chat("What time is your event?", confirm=True)
+
+        # Checks if essential event information is provided
+        def validate_event_data():
+            if self.event_data:
+                if 'title' not in self.event_data:
+                    request_data('title')
+                elif 'start_date' not in self.event_data:
+                    request_data('start_date')
+                elif 'start_time' not in self.event_data:
+                    request_data('start_time')
+                else:
+                    self.info_requested = False
+            else:
+                update_chat("I'm sorry. I don't understand.")
+                return False
+
+            return not self.info_requested
+
+        # TODO: validate date/time and format for event creation
+        def validate_user_response():
+            if self.info_requested:
+                if self.request == 'title':
+                    self.event_data['title'] = self.user_last_msg
+                elif self.request == 'start_date':
+                    self.event_data['start_date'] = self.user_last_msg
+                elif self.request == 'start_time':
+                    self.event_data['start_time'] = self.user_last_msg
+
+        def request_data(detail):
+            self.request = detail
+            self.info_requested = True
+
+        def add_user_response(msg):
             self.user_last_msg = msg
             if msg == '':
-                chat_view.text += "That is not a valid query.\n"
+                update_chat("Sorry, that's not a valid query.")
             else:
-                chat_view.text += '> ' + msg + '\n'
+                update_chat(msg, is_user=True)
                 text_field.text = ''
                 get_bot_response()
 
-        button.bind(on_press=lambda x: update_chat(text_field.text))
-        text_field.bind(on_text_validate=lambda x: update_chat(text_field.text))
+        # string, bool, bool
+        def update_chat(text, is_user=False, confirm=False):
+            if is_user:
+                chat_view.text += '> '
+            elif confirm:
+                chat_view.text += yes_resp[randint(0, len(yes_resp) - 1)]
+
+            chat_view.text += text + '\n'
+
+        button.bind(on_press=lambda x: add_user_response(text_field.text))
+        text_field.bind(on_text_validate=lambda x: add_user_response(text_field.text))
 
         main_box_layout.add_widget(chat_view)
         main_box_layout.add_widget(in_box_layout)
