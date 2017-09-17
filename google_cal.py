@@ -63,7 +63,7 @@ def create_event(event_data):
 
     for key, value in event_data.items():
         if key == 'title':
-            event['summary'] = value
+            event['summary'] = value.capitalize()
         elif key == 'location':
             event['location'] = value
 
@@ -75,7 +75,7 @@ def create_event(event_data):
     }
 
     # Convert end_date and end_time
-    end_date = event_data['start_date']
+    end_date = convert_to_datetime(event_data['start_date'])
     end_time = convert_to_datetime(event_data['start_time']) + timedelta(hours=1)  # default 1 hour
 
     if 'end_date' in event_data:
