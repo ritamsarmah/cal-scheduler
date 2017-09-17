@@ -1,6 +1,7 @@
 #!/usr/local/bin/python3
 
 import cal_manager
+import google_cal
 
 from kivy.app import App
 
@@ -12,12 +13,12 @@ from kivy.properties import StringProperty
 from kivy.lang import Builder
 
 from random import randint
-import parsedatetime as pdt
 
 theme_color = [0.31, 0.89, 0.76, 1]
 white_color = [1, 1, 1, 1]
 black_color = [0, 0, 0, 1]
 yes_resp = ['OK. ', 'Got it. ', 'Sure. ', 'All right. ', '']
+cancel_intents = ['cancel', 'never mind', 'forget it', 'quit', 'restart', 'start over']
 
 cal = cal_manager.CalendarManager()
 
@@ -57,7 +58,7 @@ class ChatApp(App):
         text_field = TextInput(background_color=white_color,
                                foreground_color=black_color,
                                cursor_color=black_color,
-                               hint_text='Enter your event details',
+                               hint_text="Enter your event details",
                                size_hint_x=0.8,
                                multiline=False)
 
@@ -67,18 +68,17 @@ class ChatApp(App):
                         color=white_color)
 
         def get_bot_response():
-            if self.info_requested:
-                validate_user_response()
-                if validate_event_data():
-                    update_chat("Creating your event.", confirm=True)
-                    for key, value in self.event_data.items():
-                        update_chat(key + ': ' + value)
-                else:
-                    add_request_to_chat()
-
+            if self.user_last_msg.lower().replace('.', '') in cancel_intents:
+                update_chat("Canceling event creation.", confirm=True)
             else:
-                self.event_data = cal.send_query(self.user_last_msg)
-                if not validate_event_data():
+                if self.info_requested:
+                    validate_user_response()
+                else:
+                    self.event_data = cal.send_query(self.user_last_msg)
+
+                if validate_event_data():
+                    create_event()
+                else:
                     add_request_to_chat()
 
         def add_request_to_chat():
@@ -116,9 +116,17 @@ class ChatApp(App):
                 if self.request == 'title':
                     self.event_data['title'] = self.user_last_msg
                 elif self.request == 'start_date':
+                    # TODO: Might check for both date and time here
                     self.event_data['start_date'] = self.user_last_msg
                 elif self.request == 'start_time':
                     self.event_data['start_time'] = self.user_last_msg
+
+        def create_event():
+            update_chat("Creating your event.", confirm=True)
+            google_cal.create_event(self.event_data)
+            for key, value in self.event_data.items():
+                update_chat(key + ': ' + value)
+            self.event_data = None
 
         def request_data(detail):
             self.request = detail
@@ -154,12 +162,5 @@ class ChatApp(App):
         return main_box_layout
 
 
-def convert_datetime(user_input):
-    pdt_cal = pdt.Calendar()
-    return pdt_cal.parse(user_input)
-
-
 if __name__ == "__main__":
     ChatApp().run()
-
-print(convert_datetime("tomorrow at 7pm"))

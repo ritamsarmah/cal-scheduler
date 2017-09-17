@@ -1,59 +1,12 @@
 #!/usr/local/bin/python3
 
-import json, requests, httplib2
-import os
+import json
+import requests
 import config
-import time
-
-from apiclient import discovery
-from oauth2client import client
-from oauth2client import tools
-from oauth2client.file import Storage
-
-# For Google Calendar API
-try:
-    import argparse
-    flags = argparse.ArgumentParser(parents=[tools.argparser]).parse_args()
-except ImportError:
-    flags = None
-
-# Global Constants
-SCOPES = 'https://www.googleapis.com/auth/calendar'
-CLIENT_SECRET_FILE = 'client_secret.json'
-APPLICATION_NAME = 'Cal Scheduler'
 
 # NOTE: key and appID are included in config file
 BASE_URL = "https://westus.api.cognitive.microsoft.com"
 CREATE_EVENT_INTENT = "builtin.intent.calendar.create_calendar_entry"
-
-
-def get_credentials():
-    """Gets valid user credentials from storage.
-
-    If nothing has been stored, or if the stored credentials are invalid,
-    the OAuth2 flow is completed to obtain the new credentials.
-
-    Returns:
-        Credentials, the obtained credential.
-    """
-    home_dir = os.path.expanduser('~')
-    credential_dir = os.path.join(home_dir, '.credentials')
-    if not os.path.exists(credential_dir):
-        os.makedirs(credential_dir)
-    credential_path = os.path.join(credential_dir,
-                                   'calendar-python-quickstart.json')
-
-    store = Storage(credential_path)
-    credentials = store.get()
-    if not credentials or credentials.invalid:
-        flow = client.flow_from_clientsecrets(CLIENT_SECRET_FILE, SCOPES)
-        flow.user_agent = APPLICATION_NAME
-        if flags:
-            credentials = tools.run_flow(flow, store, flags)
-        else: # Needed only for compatibility with Python 2.6
-            credentials = tools.run(flow, store)
-        print('Storing credentials to ' + credential_path)
-    return credentials
 
 
 class CalendarManager:
@@ -96,26 +49,6 @@ class CalendarManager:
             return event_data
         else:
             return None
-
-    def create_event(self, event_data):
-        credentials = get_credentials()
-        http = credentials.authorize(httplib2.Http())
-        service = discovery.build('calendar', 'v3', http=http)
-
-        event = {}  # Converts LUIS event data to Google Calendar format
-
-        for key, value in event_data.items():
-            if key == 'title':
-                event['summary'] = value
-            elif key == 'location':
-                event['location'] = value
-            elif key == 'start_time':
-                event['start'] = {'dateTime': value}
-            elif key == 'end_time':
-                event['end'] = {'dateTime': value}
-
-        event = service.events().insert(calendarId='primary', body=event).execute()
-        print('Event created: %s' % (event.get('htmlLink')))
 
     @staticmethod
     def print_output(event_data):
