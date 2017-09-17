@@ -29,7 +29,7 @@ class CalendarManager:
                 value = entity['entity']
 
                 if entity_type == 'builtin.calendar.title':
-                    event_data['title'] = value
+                    event_data['title'] = value.title()
                 elif entity_type == 'builtin.calendar.start_time':
                     event_data['start_time'] = value
                 elif entity_type == 'builtin.calendar.end_time':

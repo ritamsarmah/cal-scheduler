@@ -60,10 +60,11 @@ def create_event(event_data):
 
     # Convert LUIS event data to Google Calendar format
     event = {}
+    print(str(event_data))
 
     for key, value in event_data.items():
         if key == 'title':
-            event['summary'] = value.capitalize()
+            event['summary'] = value
         elif key == 'location':
             event['location'] = value
 
@@ -75,8 +76,8 @@ def create_event(event_data):
     }
 
     # Convert end_date and end_time
-    end_date = convert_to_datetime(event_data['start_date'])
-    end_time = convert_to_datetime(event_data['start_time']) + timedelta(hours=1)  # default 1 hour
+    end_date = start + timedelta(hours=1)
+    end_time = end_date  # default 1 hour
 
     if 'end_date' in event_data:
         end_date = event_data['end_date']
@@ -93,7 +94,7 @@ def create_event(event_data):
         'timeZone': str(get_localzone())
     }
 
-    print("***GOOGLE EVENT***\n" + str(event))
+    print(str(event))
 
     event = service.events().insert(calendarId=config.email, body=event).execute()
     print('Event created: %s' % (event.get('htmlLink')))

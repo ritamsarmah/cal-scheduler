@@ -114,7 +114,7 @@ class ChatApp(App):
         def validate_user_response():
             if self.info_requested:
                 if self.request == 'title':
-                    self.event_data['title'] = self.user_last_msg
+                    self.event_data['title'] = self.user_last_msg.title()
                 elif self.request == 'start_date':
                     # TODO: Might check for both date and time here
                     self.event_data['start_date'] = self.user_last_msg
@@ -122,7 +122,7 @@ class ChatApp(App):
                     self.event_data['start_time'] = self.user_last_msg
 
         def create_event():
-            update_chat("Creating your event.", confirm=True)
+            update_chat("Creating your event \"{}\".".format(self.event_data['title']), confirm=True)
             google_cal.create_event(self.event_data)
             for key, value in self.event_data.items():
                 update_chat(key + ': ' + value)
